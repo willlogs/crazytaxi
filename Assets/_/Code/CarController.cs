@@ -11,7 +11,7 @@ namespace Car
         public UnityEvent onStartAcc, onStopAcc, onStartTurn, onStopTurn, onStartDrifting, onStopDrifting;
 
         [SerializeField] private Rigidbody _rigidBody;
-        [SerializeField] private float _speed = 4, _rotationDuration = 0.4f;
+        [SerializeField] private float _acceleration = 4, _rotationDuration = 0.4f, _speedCap = 20;
         [SerializeField] private Camera _cam;
 
         private Vector3 _lastPosition;
@@ -21,6 +21,53 @@ namespace Car
         private Tweener _rotationTween;
 
         private void Update()
+        {
+            CheckInput();
+            Rotate();
+            CheckDrifting();
+            LimitateVelocity();
+        }
+
+        private void CheckDrifting()
+        {
+            Vector3 sampleVel = _rigidBody.velocity;
+            sampleVel.y = 0;
+            if (sampleVel.magnitude > 3)
+            {
+                Vector3 directionDiff = sampleVel.normalized + transform.forward;
+                float degree = Mathf.Atan2(directionDiff.y, directionDiff.x) * Mathf.Rad2Deg;
+                print(degree);
+                if (Mathf.Abs(degree) > 10)
+                {
+                    StartDrifting();
+                }
+                else
+                {
+                    StopDrifting();
+                }
+            }
+        }
+
+        private void LimitateVelocity()
+        {
+            if (_rigidBody.velocity.magnitude > _speedCap)
+            {
+                _rigidBody.velocity = _rigidBody.velocity.normalized * _speedCap;
+            }
+        }
+
+        private void Rotate()
+        {
+            Vector3 vel = _newDirection;
+            vel.y = 0;
+            if (vel.magnitude > 0.1f)
+            {
+                _rotationTween?.Kill();
+                _rotationTween = DOTween.To(() => transform.forward, (x) => { transform.forward = x; }, -vel.normalized, _rotationDuration);
+            }
+        }
+
+        private void CheckInput()
         {
             if (Input.GetMouseButton(0))
             {
@@ -34,7 +81,7 @@ namespace Car
 
                     Vector3 newDiff = transform.forward - _newDirection;
                     float diffDegree = Mathf.Atan2(newDiff.y, newDiff.x) * Mathf.Rad2Deg;
-                    if(Mathf.Abs(diffDegree) > 45)
+                    if (Mathf.Abs(diffDegree) > 45)
                     {
                         StartTurning();
                     }
@@ -43,7 +90,7 @@ namespace Car
                         StopTurning();
                     }
 
-                    _rigidBody.velocity = transform.forward * -_speed;
+                    _rigidBody.velocity += transform.forward * -_acceleration * Time.deltaTime;
                 }
                 else
                 {
@@ -61,31 +108,6 @@ namespace Car
                 _hasLastPosition = false;
                 StopMoving();
                 StopTurning();
-            }
-
-            Vector3 vel = _newDirection;
-            vel.y = 0;
-            if (vel.magnitude > 0.1f)
-            {
-                _rotationTween?.Kill();
-                _rotationTween = DOTween.To(() => transform.forward, (x) => { transform.forward = x; }, -vel.normalized, _rotationDuration);
-            }
-
-            if(_rigidBody.velocity.magnitude > 3)
-            {
-                Vector3 sampleVel = _rigidBody.velocity;
-                sampleVel.y = 0;
-                Vector3 directionDiff = sampleVel.normalized - transform.forward;
-                float degree = Mathf.Atan2(directionDiff.y, directionDiff.x) * Mathf.Rad2Deg;
-                print(degree);
-                if(Mathf.Abs(degree) > 10)
-                {
-                    StartDrifting();
-                }
-                else
-                {
-                    StopDrifting();
-                }
             }
         }
 

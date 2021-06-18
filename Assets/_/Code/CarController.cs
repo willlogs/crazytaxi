@@ -3,22 +3,32 @@ using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
 using UnityEngine.Events;
+using Game;
+using TMPro;
 
 namespace Car
 {
     public class CarController : MonoBehaviour
     {
-        public UnityEvent onStartAcc, onStopAcc, onStartTurn, onStopTurn, onStartDrifting, onStopDrifting;
+        public UnityEvent onStartAcc, onStopAcc, onStartTurn, onStopTurn, onStartDrifting, onStopDrifting, onScore;
 
         [SerializeField] private Rigidbody _rigidBody;
         [SerializeField] private float _acceleration = 4, _rotationDuration = 0.4f, _speedCap = 20;
         [SerializeField] private Camera _cam;
+        [SerializeField] private TextMeshPro _scoreText;
+
+        [SerializeField] private AudioSource _engineSFX, _otherEngineSFX, _popSFX;
+        [SerializeField] private AnimationCurve _pitchCurve, _volumeCurve;
 
         private Vector3 _lastPosition;
-        private bool _hasLastPosition, _isTurning, _isMoving, _isDrifting;
+        private bool _hasLastPosition, _isTurning, _isMoving, _isDrifting, _waitingToResetPitch;
         private Vector3 _newDirection;
 
+        private float _timer;
+
         private Tweener _rotationTween;
+
+        private int _score = 0;
 
         private void Update()
         {
@@ -26,6 +36,21 @@ namespace Car
             Rotate();
             CheckDrifting();
             LimitateVelocity();
+
+            float t = _rigidBody.velocity.magnitude / _speedCap;
+            _engineSFX.volume = _volumeCurve.Evaluate(t);
+            _otherEngineSFX.volume = (1 - _volumeCurve.Evaluate(t)) * 0.2f;
+            _engineSFX.pitch = _pitchCurve.Evaluate(t);
+
+            if(_timer < 1f)
+            {
+                _timer += Time.deltaTime;
+            }
+            else if (_waitingToResetPitch)
+            {
+                _waitingToResetPitch = false;
+                _popSFX.pitch = 1;
+            }
         }
 
         private void CheckDrifting()
@@ -167,6 +192,27 @@ namespace Car
             Gizmos.DrawLine(transform.position, transform.position - transform.forward);
             Gizmos.color = Color.blue;
             Gizmos.DrawLine(transform.position, transform.position + _newDirection.normalized);
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if(other.gameObject.layer == 7)
+            {
+                other.GetComponent<Passenger>().Collide();
+                Score();
+            }
+        }
+
+        private void Score()
+        {
+            _score += 1;
+            onScore?.Invoke();
+            _scoreText.text = _score + "";
+            _popSFX.pitch += 0.05f;
+            _popSFX.Stop();
+            _popSFX.Play();
+            _timer = 0;
+            _waitingToResetPitch = true;
         }
     }
 }

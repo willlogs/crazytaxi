@@ -9,7 +9,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: ScreenTextureBlend
   m_Shader: {fileID: 4800000, guid: 781da9ede2a014d4cb09e272fdb81420, type: 3}
-  m_ShaderKeywords: 
+  m_ShaderKeywords: B4
   m_LightmapFlags: 5
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
